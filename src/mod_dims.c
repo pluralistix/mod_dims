@@ -45,6 +45,10 @@
 #include <curl/easy.h>
 #include "apr_date.h"
 
+#include <stdio.h>
+#include <ctype.h>
+#include <strings.h>
+
 module dims_module; 
 
 #define DIMS_CURL_SHARED_KEY "dims_curl_shared"
@@ -582,7 +586,7 @@ dims_fetch_remote_image(dims_request_rec *d, const char *url)
 
         start_time = apr_time_now();
 
-        char *if_modified_since = apr_table_get(d->r->headers_in, "If-Modified-Since");
+        const char *if_modified_since = apr_table_get(d->r->headers_in, "If-Modified-Since");
 
         if (if_modified_since && (strstr(d->unparsed_commands, "save") == NULL )) {
             apr_time_t if_modified_since_time = apr_date_parse_http(if_modified_since);
@@ -874,15 +878,15 @@ dims_send_image(dims_request_rec *d)
     snprintf(buf, 128, "%ld", d->original_image_size);
     apr_table_set(d->r->notes, "DIMS_ORIG_BYTES", buf);
 
-    snprintf(buf, 128, "%lld", d->download_time);
+    snprintf(buf, 128, "%ld", d->download_time);
     apr_table_set(d->r->notes, "DIMS_DL_TIME", buf);
 
-    snprintf(buf, 128, "%lld", (apr_time_now() - d->start_time) / 1000);
+    snprintf(buf, 128, "%ld", (apr_time_now() - d->start_time) / 1000);
     apr_table_set(d->r->notes, "DIMS_TOTAL_TIME", buf);
 
     if(d->status != DIMS_DOWNLOAD_TIMEOUT && 
             d->status != DIMS_IMAGEMAGICK_TIMEOUT) {
-        snprintf(buf, 128, "%lld", d->imagemagick_time);
+        snprintf(buf, 128, "%ld", d->imagemagick_time);
         apr_table_set(d->r->notes, "DIMS_IM_TIME", buf);
     }
 
@@ -1027,7 +1031,7 @@ dims_process_image(dims_request_rec *d)
     if(MagickGetImageColorspace(d->wand) == CMYKColorspace) {
         size_t number_profiles;
 
-        char *profiles = MagickGetImageProfiles(d->wand, "icc", &number_profiles);
+        MagickGetImageProfiles(d->wand, "icc", &number_profiles);
         if (number_profiles == 0) {
             MagickProfileImage(d->wand, "ICC", cmyk_icc, sizeof(cmyk_icc));
         }
@@ -1057,10 +1061,9 @@ dims_process_image(dims_request_rec *d)
                         strcmp(command, "legacy_thumbnail") == 0 ||
                         strcmp(command, "legacy_crop") == 0 ||
                         strcmp(command, "thumbnail") == 0)) {
-                    MagickStatusType flags;
                     RectangleInfo rec;
 
-                    flags = ParseAbsoluteGeometry(args, &rec);
+                    ParseAbsoluteGeometry(args, &rec);
 
                     if(rec.width > 0 && rec.height == 0) {
                         args = apr_psprintf(d->pool, "%ld", rec.width);
@@ -1235,7 +1238,7 @@ dims_handle_request(dims_request_rec *d)
         d->original_image_size = finfo.size;
         d->modification_time = finfo.mtime;
         
-        char *if_modified_since = apr_table_get(d->r->headers_in, "If-Modified-Since");
+        const char *if_modified_since = apr_table_get(d->r->headers_in, "If-Modified-Since");
         if (if_modified_since && (strstr(d->unparsed_commands, "save") == NULL )) {
             apr_time_t if_modified_since_time = apr_date_parse_http(if_modified_since);
             apr_int64_t if_modified_since_sec, request_time_sec, modification_time_sec;
@@ -1330,13 +1333,11 @@ dims_handle_request(dims_request_rec *d)
 static apr_status_t
 dims_sizer(dims_request_rec *d)
 {
-    apr_time_t now_time;
     
     apr_uri_t uri;
     long width, height;
 
     d->wand = NewMagickWand();
-    now_time = apr_time_now();
     if(!d->image_url ) {
         return DECLINED;
     }

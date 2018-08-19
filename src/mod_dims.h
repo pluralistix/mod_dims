@@ -31,7 +31,7 @@
 #include <http_log.h>
 #include <http_protocol.h>
 
-#include <wand/magick-wand.h>
+#include <MagickWand/MagickWand.h>
 
 #define LEGACY_DIMS_RESIZE 1
 #define LEGACY_DIMS_REFORMAT 2
